@@ -10,12 +10,19 @@ const jwt = require("jsonwebtoken");
 exports.register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
     const newUser = new User({ username, email, password: hashedPassword });
     await newUser.save();
+
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ status: "failed",  message: error.message });
   }
 };
 
@@ -35,6 +42,18 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// get all products
+exports.getAllProducts = async (req, res) => {
+  try {
+    const products = await Product.find({ isDeleted: false });
+    res.status(200).json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 
 // View Products by Category
 exports.getProductsByCategory = async (req, res) => {
@@ -66,6 +85,8 @@ exports.addToCart = async (req, res) => {
   try {
     const { userId, productId } = req.body;
     const cart = await Cart.findOne({ userId });
+    // console.log(cart);
+    
 
     if (cart) {
       const existingProduct = cart.products.find((p) =>
@@ -77,7 +98,7 @@ exports.addToCart = async (req, res) => {
       cart.products.push({ productId });
       await cart.save();
     } else {
-      // Create a new cart if none exists for the user
+
       const newCart = new Cart({ userId, products: [{ productId }] });
       await newCart.save();
     }
@@ -102,7 +123,6 @@ exports.getCartItems = async (req, res) => {
   }
 };
 
-
 // Delete a cart product for user
 exports.deleteCartItem = async (req, res) => {
   try {
@@ -110,7 +130,7 @@ exports.deleteCartItem = async (req, res) => {
     const cart = await Cart.findOne({ userId });
 
     if (!cart) {
-      return res.status(404).json({ message: 'Cart not found' });
+      return res.status(404).json({ message: "Cart not found" });
     }
 
     const productIndex = cart.products.findIndex((p) =>
@@ -118,13 +138,13 @@ exports.deleteCartItem = async (req, res) => {
     );
 
     if (productIndex === -1) {
-      return res.status(404).json({ message: 'Product not found in cart' });
+      return res.status(404).json({ message: "Product not found in cart" });
     }
 
     cart.products.splice(productIndex, 1);
     await cart.save();
 
-    res.status(200).json({ message: 'Cart item deleted successfully' });
+    res.status(200).json({ message: "Cart item deleted successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -137,18 +157,48 @@ exports.clearCart = async (req, res) => {
     const cart = await Cart.findOne({ userId });
 
     if (!cart) {
-      return res.status(404).json({ message: 'Cart not found' });
+      return res.status(404).json({ message: "Cart not found" });
     }
 
-    cart.products = []; 
+    cart.products = [];
     await cart.save();
 
-    res.status(200).json({ message: 'Cart cleared successfully' });
+    res.status(200).json({ message: "Cart cleared successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
+// Update Cart Item Quantity
+exports.updateCartItemQuantity = async (req, res) => {
+  try {
+    const { userId, productId } = req.params;
+    const { quantity } = req.body;
+
+    if (quantity < 1) {
+      return res.status(400).json({ message: "Quantity must be at least 1" });
+    }
+
+    const cart = await Cart.findOne({ userId });
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+
+    const product = cart.products.find((p) => p.productId.equals(productId));
+    if (!product) {
+      return res.status(404).json({ message: "Product not found in cart" });
+    }
+
+    product.quantity = quantity;
+    await cart.save();
+
+    res
+      .status(200)
+      .json({ message: "Cart item quantity updated successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 // Add Product to Wishlist
 exports.addToWishlist = async (req, res) => {
@@ -177,7 +227,7 @@ exports.addToWishlist = async (req, res) => {
   }
 };
 
-// Get Wishlist Items
+// get wishlist items
 exports.getWishlistItems = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -191,34 +241,66 @@ exports.getWishlistItems = async (req, res) => {
   }
 };
 
-// Create an Order
+
+// order for user
 exports.createOrder = async (req, res) => {
   try {
-    const { userId, Products, orderId, totalPrice, totalItems } = req.body;
+    const { userId } = req.body;
+
+    const cart = await Cart.findOne({ userId }).populate("products.productId");
+    if (!cart || cart.products.length === 0) {
+      return res.status(400).json({ message: "Cart is empty or not found" });
+    }
+    // console.log(cart);
+    
+
+    const totalPrice = cart.products.reduce(
+      (acc, item) => acc + item.productId.price * item.quantity,
+      0
+    );
+    // console.log(totalPrice);
+    
+    const totalItems = cart.products.length; 
+    // console.log("total item", totalItems);
+    
+
     const newOrder = new Order({
       userId,
-      Products,
-      orderId,
+      Products: cart.products, 
       totalPrice,
       totalItems,
+      orderId: `orderId-${Date.now()}`, 
     });
+
     await newOrder.save();
-    res.status(201).json({ message: "Order created successfully" });
+
+    cart.products = [];
+    await cart.save();
+
+    res.status(201).json({ message: "Order created successfully", order: newOrder });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message }); 
   }
 };
+
 
 // View Order Details
 exports.getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
-    const order = await Order.findOne({ orderId });
+    console.log("Order ID from request:", orderId);
+
+    // Query by _id instead of orderId
+    const order = await Order.findById(orderId).populate("Products.productId");
+    console.log("Fetched order:", order);
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
+
+
     res.status(200).json(order);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+

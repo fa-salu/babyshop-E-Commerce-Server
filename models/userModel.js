@@ -5,8 +5,6 @@ const userSchema = new mongoose.Schema({
   email: String,
   password: String,
   profileImg: String,
-  profileThumbImg: String,
-  accountCreatedDate: { type: Date, default: Date.now },
   isDeleted: { type: Boolean, default: false }
 });
 

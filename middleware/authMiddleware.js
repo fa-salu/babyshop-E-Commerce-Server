@@ -7,7 +7,6 @@ module.exports = (req, res, next) => {
     return res.status(401).json({ message: "No token provided" });
   }
 
-  // Extract token by splitting "Bearer <token>"
   const token = authHeader.split(" ")[1];
 
   if (!token) {
@@ -18,7 +17,7 @@ module.exports = (req, res, next) => {
 
   jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
     if (err) {
-      return res.status(401).json({ message: "Invalid token" });
+      return res.status(401).json({ message: "Invalid token", error: err});
     }
     req.userId = decoded.userId;
     next();
