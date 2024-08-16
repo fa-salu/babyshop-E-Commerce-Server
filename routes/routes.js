@@ -9,6 +9,8 @@ router.get('/products/:category', controllers.getProductsByCategory);
 router.get('/product/:productId', controllers.getProductById);
 router.post('/cart', authMiddleware, controllers.addToCart);
 router.get('/cart/:userId', authMiddleware, controllers.getCartItems);
+router.delete('/cart/:userId/:productId', authMiddleware, controllers.deleteCartItem);
+router.delete('/cart/:userId', authMiddleware, controllers.clearCart);
 router.post('/wishlist', authMiddleware, controllers.addToWishlist);
 router.get('/wishlist/:userId', authMiddleware, controllers.getWishlistItems);
 router.post('/order', authMiddleware, controllers.createOrder);

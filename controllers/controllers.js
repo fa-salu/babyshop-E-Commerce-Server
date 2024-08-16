@@ -68,7 +68,6 @@ exports.addToCart = async (req, res) => {
     const cart = await Cart.findOne({ userId });
 
     if (cart) {
-      // Check if the product is already in the cart
       const existingProduct = cart.products.find((p) =>
         p.productId.equals(productId)
       );
@@ -103,30 +102,73 @@ exports.getCartItems = async (req, res) => {
   }
 };
 
+
+// Delete a cart product for user
+exports.deleteCartItem = async (req, res) => {
+  try {
+    const { userId, productId } = req.params;
+    const cart = await Cart.findOne({ userId });
+
+    if (!cart) {
+      return res.status(404).json({ message: 'Cart not found' });
+    }
+
+    const productIndex = cart.products.findIndex((p) =>
+      p.productId.equals(productId)
+    );
+
+    if (productIndex === -1) {
+      return res.status(404).json({ message: 'Product not found in cart' });
+    }
+
+    cart.products.splice(productIndex, 1);
+    await cart.save();
+
+    res.status(200).json({ message: 'Cart item deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Clear cart for user
+exports.clearCart = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const cart = await Cart.findOne({ userId });
+
+    if (!cart) {
+      return res.status(404).json({ message: 'Cart not found' });
+    }
+
+    cart.products = []; 
+    await cart.save();
+
+    res.status(200).json({ message: 'Cart cleared successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 // Add Product to Wishlist
 exports.addToWishlist = async (req, res) => {
   try {
     const { userId, productId } = req.body;
 
-    // Find the wishlist for the given user
     let wishlist = await Wishlist.findOne({ userId });
 
     if (wishlist) {
-      // Check if the product is already in the wishlist
       const productExists = wishlist.products.some((p) => p.equals(productId));
 
       if (productExists) {
         return res.status(400).json({ message: "Product already in wishlist" });
       }
 
-      // If not, add the product to the array
       wishlist.products.push(productId);
     } else {
-      // If the wishlist doesn't exist, create a new one
       wishlist = new Wishlist({ userId, products: [productId] });
     }
 
-    // Save the wishlist
     await wishlist.save();
 
     res.status(201).json({ message: "Product added to wishlist", wishlist });
