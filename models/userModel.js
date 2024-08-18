@@ -5,7 +5,7 @@ const userSchema = new mongoose.Schema({
   email: String,
   password: String,
   profileImg: String,
-  isDeleted: { type: Boolean, default: false }
+  isAdmin: { type: Boolean, default: false } 
 });
 
 module.exports = mongoose.model('User', userSchema);
