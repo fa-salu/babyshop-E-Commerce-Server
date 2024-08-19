@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
-const routes = require("./routes/routes");
+const userRoutes = require("./routes/userRoutes");
+const adminRoutes = require("./routes/adminRoutes")
 const errorHandler = require("./middleware/errorHandler");
 require("dotenv").config();
 
@@ -14,7 +15,8 @@ mongoose
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error(err));
 
-app.use("/users", routes);
+app.use("/users", userRoutes);
+app.use("/admin", adminRoutes)
 
 const PORT = process.env.PORT || 5000;
 
