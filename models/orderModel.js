@@ -5,7 +5,8 @@ const orderSchema = new mongoose.Schema({
   Products: [{ productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' } }], 
   purchaseDate: { type: Date, default: Date.now }, 
   totalPrice: Number, 
-  totalItems: Number 
+  totalItems: Number,
+  totalQuantity: Number
 });
 
 module.exports = mongoose.model('Order', orderSchema);

@@ -248,38 +248,37 @@ exports.createOrder = async (req, res) => {
     const { userId } = req.body;
 
     const cart = await Cart.findOne({ userId }).populate("products.productId");
+    
     if (!cart || cart.products.length === 0) {
       return res.status(400).json({ message: "Cart is empty or not found" });
     }
-    // console.log(cart);
-    
 
     const totalPrice = cart.products.reduce(
       (acc, item) => acc + item.productId.price * item.quantity,
       0
     );
-    // console.log(totalPrice);
-    
-    const totalItems = cart.products.length; 
-    // console.log("total item", totalItems);
+
+    const totalItems = cart.products.length;
+    const totalQuantity = cart.products.reduce((acc, item) => acc + item.quantity, 0);
+    // console.log(totalQuantity);
     
 
     const newOrder = new Order({
-      userId,
+      userId, 
       Products: cart.products, 
       totalPrice,
       totalItems,
+      totalQuantity,
       orderId: `orderId-${Date.now()}`, 
     });
 
     await newOrder.save();
 
-    cart.products = [];
-    await cart.save();
+    await Cart.findByIdAndDelete(cart._id);
 
     res.status(201).json({ message: "Order created successfully", order: newOrder });
   } catch (error) {
-    res.status(500).json({ message: error.message }); 
+    res.status(500).json({ message: error.message, error: "can't order" });
   }
 };
 
@@ -288,11 +287,10 @@ exports.createOrder = async (req, res) => {
 exports.getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
-    console.log("Order ID from request:", orderId);
+    // console.log("Order ID", orderId);
 
-    // Query by _id instead of orderId
     const order = await Order.findById(orderId).populate("Products.productId");
-    console.log("Fetched order:", order);
+    // console.log("order:", order);
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
