@@ -5,13 +5,17 @@ const Cart = require("../models/cartModel");
 const Order = require("../models/orderModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { joiRegisterSchema, joiLoginSchema } = require('../models/joiValidate')
+const Razorpay = require("razorpay");
+require("dotenv").config();
+const { joiRegisterSchema, joiLoginSchema } = require("../models/joiValidate");
 // User Registration
 exports.register = async (req, res) => {
   try {
     const { error } = joiRegisterSchema.validate(req.body);
     if (error) {
-      return res.status(400).json({ status: "failed", message: error.details[0].message });
+      return res
+        .status(400)
+        .json({ status: "failed", message: error.details[0].message });
     }
     const { username, email, password } = req.body;
 
@@ -26,7 +30,7 @@ exports.register = async (req, res) => {
 
     res.status(201).json({ message: "User registered successfully" });
   } catch (error) {
-    res.status(500).json({ status: "failed",  message: error.message });
+    res.status(500).json({ status: "failed", message: error.message });
   }
 };
 
@@ -34,7 +38,8 @@ exports.register = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { error } = joiLoginSchema.validate(req.body);
-    if (error) return res.status(400).json({ message: error.details[0].message });
+    if (error)
+      return res.status(400).json({ message: error.details[0].message });
 
     const { email, password } = req.body;
     const user = await User.findOne({ email });
@@ -59,8 +64,6 @@ exports.getAllProducts = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-
 
 // View Products by Category
 exports.getProductsByCategory = async (req, res) => {
@@ -93,7 +96,6 @@ exports.addToCart = async (req, res) => {
     const { userId, productId } = req.body;
     const cart = await Cart.findOne({ userId });
     // console.log(cart);
-    
 
     if (cart) {
       const existingProduct = cart.products.find((p) =>
@@ -105,7 +107,6 @@ exports.addToCart = async (req, res) => {
       cart.products.push({ productId });
       await cart.save();
     } else {
-
       const newCart = new Cart({ userId, products: [{ productId }] });
       await newCart.save();
     }
@@ -248,14 +249,17 @@ exports.getWishlistItems = async (req, res) => {
   }
 };
 
-
-// order for user
+// order section
 exports.createOrder = async (req, res) => {
+  const razorpayInstance = new Razorpay({
+    key_id: process.env.RAZORPAY_KEY_ID,
+    key_secret: process.env.RAZORPAY_KEY_SECRET,
+  });
+
   try {
     const { userId } = req.body;
-
     const cart = await Cart.findOne({ userId }).populate("products.productId");
-    
+
     if (!cart || cart.products.length === 0) {
       return res.status(400).json({ message: "Cart is empty or not found" });
     }
@@ -264,31 +268,58 @@ exports.createOrder = async (req, res) => {
       (acc, item) => acc + item.productId.price * item.quantity,
       0
     );
+    // console.log('Total Price:', totalPrice);
 
     const totalItems = cart.products.length;
-    const totalQuantity = cart.products.reduce((acc, item) => acc + item.quantity, 0);
-    // console.log(totalQuantity);
-    
+    const totalQuantity = cart.products.reduce(
+      (acc, item) => acc + item.quantity,
+      0
+    );
+
+    // Create a Razorpay order
+    const options = {
+      amount: totalPrice * 100,
+      currency: "INR",
+      receipt: `receipt_order_${Date.now()}`,
+      payment_capture: 1,
+    };
+    // console.log('Razorpay options:', options);
+
+    const razorpayOrder = await razorpayInstance.orders.create(options);
+    console.log("Razorpay order:", razorpayOrder);
+
+    if (!razorpayOrder) {
+      return res.status(500).json({ message: "Error creating Razorpay order" });
+    }
 
     const newOrder = new Order({
-      userId, 
-      Products: cart.products, 
+      userId,
+      Products: cart.products,
       totalPrice,
       totalItems,
       totalQuantity,
-      orderId: `orderId-${Date.now()}`, 
+      purchaseDate: Date.now(),
+      orderId: razorpayOrder.id,
+      paymentStatus: "Pending",
     });
 
     await newOrder.save();
 
     await Cart.findByIdAndDelete(cart._id);
 
-    res.status(201).json({ message: "Order created successfully", order: newOrder });
+    res.status(201).json({
+      message: "Order created successfully",
+      order: newOrder,
+      razorpayOrderId: razorpayOrder.id,
+      // razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message, error: "can't order" });
+    console.error("Error in createOrder:", error);
+    res
+      .status(500)
+      .json({ message: error.message, error: "Can't create order" });
   }
 };
-
 
 // View Order Details
 exports.getOrderDetails = async (req, res) => {
@@ -302,10 +333,8 @@ exports.getOrderDetails = async (req, res) => {
       return res.status(404).json({ message: "Order not found" });
     }
 
-
     res.status(200).json(order);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
