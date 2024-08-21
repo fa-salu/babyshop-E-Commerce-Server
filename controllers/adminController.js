@@ -2,7 +2,7 @@ const Users = require("../models/userModel");
 const Product = require("../models/productModel");
 const Order = require("../models/orderModel");
 const jwt = require("jsonwebtoken");
-
+const { joiCreateProductSchema } = require("../models/joiValidate");
 // admin login
 exports.adminLogin = (req, res) => {
   const { email, password } = req.body;
@@ -69,6 +69,10 @@ exports.getAllProduct = async (req, res) => {
 // Create product
 exports.createProduct = async (req, res) => {
   try {
+    const { error } = joiCreateProductSchema.validate(req.body);
+    if (error)
+      return res.status(400).json({ message: error.details[0].message });
+
     const { title, description, price, image, category } = req.body;
     const newProduct = new Product({
       title,
@@ -114,24 +118,55 @@ exports.updateProduct = async (req, res) => {
       { title, description, price, image, category },
       { new: true }
     );
-    res.status(200).json({message: "product updated successfully", updateProduct})
+    res
+      .status(200)
+      .json({ message: "product updated successfully", updateProduct });
   } catch (error) {
-    res.status(500).json({message: error.message, error: "product can't updated"})
+    res
+      .status(500)
+      .json({ message: error.message, error: "product can't updated" });
   }
 };
 
-// Get total quantity of products purchased across all orders
+// Get total purchased quantity
 exports.getTotalProductsPurchased = async (req, res) => {
   try {
     const totalProductsPurchased = await Order.aggregate([
-      // Group all documents together and sum up the totalQuantity field
-      { $group: { _id: null, totalQuantity: { $sum: "$totalQuantity" } } }
+      { $group: { _id: null, totalQuantity: { $sum: "$totalQuantity" } } },
     ]);
+    // console.log(totalProductsPurchased);
 
-    // Return the total quantity or 0 if no orders were found
-    res.status(200).json({ totalQuantity: totalProductsPurchased[0]?.totalQuantity || 0 });
+    res
+      .status(200)
+      .json({ totalQuantity: totalProductsPurchased[0]?.totalQuantity || 0 });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message, error: error });
   }
 };
 
+// Get total revenue
+exports.getTotalRevenue = async (req, res) => {
+  try {
+    const totalRevenue = await Order.aggregate([
+      { $group: { _id: null, totalRevenue: { $sum: "$totalPrice" } } },
+    ]);
+    // console.log(totalRevenue);
+
+    res.status(200).json({ totalRevenue: totalRevenue[0]?.totalRevenue || 0 });
+  } catch (error) {
+    res.status(500).json({ message: error.message, error: error });
+  }
+};
+
+// Get order details
+exports.getOrderDetails = async (req, res) => {
+  try {
+    const order = await Order.find();
+    if (!order) {
+      res.status(404).json({ message: "order details not found" });
+    }
+    res.status(200).json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message, error: error });
+  }
+};

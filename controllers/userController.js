@@ -5,10 +5,14 @@ const Cart = require("../models/cartModel");
 const Order = require("../models/orderModel");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
+const { joiRegisterSchema, joiLoginSchema } = require('../models/joiValidate')
 // User Registration
 exports.register = async (req, res) => {
   try {
+    const { error } = joiRegisterSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ status: "failed", message: error.details[0].message });
+    }
     const { username, email, password } = req.body;
 
     const existingUser = await User.findOne({ email });
@@ -29,10 +33,13 @@ exports.register = async (req, res) => {
 // User Login
 exports.login = async (req, res) => {
   try {
+    const { error } = joiLoginSchema.validate(req.body);
+    if (error) return res.status(400).json({ message: error.details[0].message });
+
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "email or password error" });
     }
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",

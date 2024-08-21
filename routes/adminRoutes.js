@@ -11,6 +11,8 @@ router.post('/product', authMiddleware, adminControllers.createProduct)
 router.delete('/product/:productId', authMiddleware, adminControllers.deleteProduct)
 router.put('/product/:productId', authMiddleware, adminControllers.updateProduct)
 router.get('/purchase', authMiddleware, adminControllers.getTotalProductsPurchased)
+router.get('/revenue', authMiddleware, adminControllers.getTotalRevenue)
+router.get('/order',authMiddleware, adminControllers.getOrderDetails )
 
 
 module.exports = router
