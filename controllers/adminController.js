@@ -162,6 +162,8 @@ exports.getTotalRevenue = async (req, res) => {
 exports.getOrderDetails = async (req, res) => {
   try {
     const order = await Order.find();
+    // console.log(order);
+    
     if (!order) {
       res.status(404).json({ message: "order details not found" });
     }
