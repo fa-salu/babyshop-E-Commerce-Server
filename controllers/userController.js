@@ -18,6 +18,8 @@ exports.register = async (req, res) => {
         .json({ status: "failed", message: error.details[0].message });
     }
     const { username, email, password } = req.body;
+    // console.log("register: " , username, email, password);
+    
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -36,6 +38,8 @@ exports.register = async (req, res) => {
 
 // User Login
 exports.login = async (req, res) => {
+  console.log(req.body);
+  
   try {
     const { error } = joiLoginSchema.validate(req.body);
     if (error)
@@ -49,9 +53,9 @@ exports.login = async (req, res) => {
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
-    res.status(200).json({ token });
+    res.status(200).json({ token, user: { id: user._id, email: user.email, username: user.username } });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({ message: error.message, error: error});
   }
 };
 

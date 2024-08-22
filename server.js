@@ -1,5 +1,6 @@
 const express = require("express");
 const connectDB = require('./config/db')
+const cors = require('cors')
 const userRoutes = require("./routes/userRoutes");
 const adminRoutes = require("./routes/adminRoutes")
 const errorHandler = require("./middleware/errorHandler");
@@ -9,6 +10,7 @@ const app = express();
 connectDB()
 
 app.use(express.json());
+app.use(cors())
 app.use(errorHandler);
 
 
