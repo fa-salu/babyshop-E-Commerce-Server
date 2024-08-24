@@ -101,6 +101,8 @@ exports.getProductsByCategory = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const { productId } = req.params;
+    // console.log(productId);
+    
     const product = await Product.findById(productId);
     if (!product || product.isDeleted) {
       return res.status(404).json({ message: "Product not found" });
@@ -112,7 +114,7 @@ exports.getProductById = async (req, res) => {
 };
 
 
-
+ 
 // Add Product to Cart
 exports.addToCart = async (req, res) => {
   try {
