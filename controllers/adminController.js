@@ -73,13 +73,14 @@ exports.createProduct = async (req, res) => {
     if (error)
       return res.status(400).json({ message: error.details[0].message });
 
-    const { title, description, price, image, category } = req.body;
+    const { name, description, price, image, category, stars } = req.body;
     const newProduct = new Product({
-      title,
+      name,
       description,
       price,
       image,
       category,
+      stars
     });
     await newProduct.save();
     res
@@ -112,10 +113,10 @@ exports.deleteProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { productId } = req.params;
-    const { title, description, price, image, category } = req.body;
+    const { name, description, price, image, category, stars } = req.body;
     const updateProduct = await Product.findByIdAndUpdate(
       productId,
-      { title, description, price, image, category },
+      { name, description, price, image, category, stars },
       { new: true }
     );
     res
@@ -162,6 +163,23 @@ exports.getTotalRevenue = async (req, res) => {
 exports.getOrderDetails = async (req, res) => {
   try {
     const order = await Order.find();
+    // console.log(order);
+    
+    if (!order) {
+      res.status(404).json({ message: "order details not found" });
+    }
+    res.status(200).json(order);
+  } catch (error) {
+    res.status(500).json({ message: error.message, error: error });
+  }
+};
+
+
+// Get order details by user
+exports.getOrderDetailsByUser = async (req, res) => {
+  try {
+    const { userId } = req.params
+    const order = await Order.find({ userId });
     // console.log(order);
     
     if (!order) {

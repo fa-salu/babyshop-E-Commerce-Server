@@ -9,6 +9,8 @@ const jwt = require("jsonwebtoken");
 const Razorpay = require("razorpay");
 require("dotenv").config();
 const { joiRegisterSchema, joiLoginSchema } = require("../models/joiValidate");
+
+
 // User Registration
 exports.register = async (req, res) => {
   try {
@@ -19,7 +21,7 @@ exports.register = async (req, res) => {
         .json({ status: "failed", message: error.details[0].message });
     }
     const { username, email, password } = req.body;
-    // console.log("register: " , username, email, password);
+    console.log("register: " , username, email, password);
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -36,6 +38,8 @@ exports.register = async (req, res) => {
   }
 };
 
+
+
 // User Login
 exports.login = async (req, res) => {
   // console.log(req.body);
@@ -48,7 +52,7 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ message: "email or password error" });
+      return res.status(401).json({ message: "email or password not match" });
     }
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
@@ -64,6 +68,9 @@ exports.login = async (req, res) => {
   }
 };
 
+
+
+
 // get all products
 exports.getAllProducts = async (req, res) => {
   try {
@@ -73,6 +80,9 @@ exports.getAllProducts = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
 
 // View Products by Category
 exports.getProductsByCategory = async (req, res) => {
@@ -84,6 +94,8 @@ exports.getProductsByCategory = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 // View a Specific Product
 exports.getProductById = async (req, res) => {
@@ -98,6 +110,8 @@ exports.getProductById = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 // Add Product to Cart
 exports.addToCart = async (req, res) => {
@@ -126,6 +140,8 @@ exports.addToCart = async (req, res) => {
   }
 };
 
+
+
 // Get Cart Items
 exports.getCartItems = async (req, res) => {
   try {
@@ -139,6 +155,8 @@ exports.getCartItems = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 // Delete a cart product for user
 exports.deleteCartItem = async (req, res) => {
@@ -167,6 +185,8 @@ exports.deleteCartItem = async (req, res) => {
   }
 };
 
+
+
 // Clear cart for user
 exports.clearCart = async (req, res) => {
   try {
@@ -185,6 +205,8 @@ exports.clearCart = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 // Update Cart Item Quantity
 exports.updateCartItemQuantity = async (req, res) => {
@@ -217,6 +239,8 @@ exports.updateCartItemQuantity = async (req, res) => {
   }
 };
 
+
+
 // Add Product to Wishlist
 exports.addToWishlist = async (req, res) => {
   try {
@@ -244,6 +268,8 @@ exports.addToWishlist = async (req, res) => {
   }
 };
 
+
+
 // get wishlist items
 exports.getWishlistItems = async (req, res) => {
   try {
@@ -257,6 +283,8 @@ exports.getWishlistItems = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
 
 // Order section
 exports.createOrder = async (req, res) => {
@@ -286,6 +314,8 @@ exports.createOrder = async (req, res) => {
       (acc, item) => acc + item.quantity,
       0
     );
+
+
 
     // Create a Razorpay order
     const options = {
@@ -334,8 +364,10 @@ exports.createOrder = async (req, res) => {
 // order section
 exports.verifyPayment = async (req, res) => {
   try {
-    const { orderId } = req.body;
-    const order = await Order.findOne(orderId);
+    const { razorpayOrderId } = req.body;
+    // console.log("body: " , razorpayOrderId);
+    
+    const order = await Order.findOne({orderId: razorpayOrderId});
     // console.log("verify: ", order);
     
 
@@ -355,12 +387,11 @@ exports.verifyPayment = async (req, res) => {
 };
 
 
-
+// cancel payment
 exports.cancelPayment = async (req, res) => {
   try {
     const { orderId } = req.params;
 
-    // Find the order by orderId, not _id
     const order = await Order.findOne({ orderId: orderId });
 
     if (!order) {
@@ -371,10 +402,8 @@ exports.cancelPayment = async (req, res) => {
       return res.status(400).json({ message: "Cannot cancel completed payment" });
     }
 
-    // Delete the order by orderId, not _id
     await Order.findOneAndDelete({ orderId: orderId });
 
-    // Restore the products to the cart
     const cart = new Cart({
       userId: order.userId,
       products: order.Products,
@@ -393,18 +422,20 @@ exports.cancelPayment = async (req, res) => {
 
 // View Order Details
 exports.getOrderDetails = async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    // console.log("Order ID", orderId);
-
-    const order = await Order.findById(orderId).populate("Products.productId");
-    // console.log("order:", order);
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+    try {
+      const { orderId } = req.params;
+  
+      const order = await Order.findOne({ orderId, paymentStatus: "Completed" });
+  
+      if (!order) {
+        return res.status(404).json({ message: "Order not found or payment is not completed" });
+      }
+  
+      return res.status(200).json({ message: "Order retrieved successfully", order });
+    } catch (error) {
+      console.error("Error in getOrderIfCompleted:", error);
+      res.status(500).json({ message: error.message, error: "Can't retrieve order" });
     }
+  };
+  
 
-    res.status(200).json(order);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};

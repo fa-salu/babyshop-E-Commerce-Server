@@ -16,10 +16,12 @@ const joiLoginSchema = Joi.object({
 
 // Product creation validation schema
 const joiCreateProductSchema = Joi.object({
-  name: Joi.string().min(3).required(),
+  name: Joi.string().required(),
+  description: Joi.string().required(),
+  price: Joi.number().required(),
+  image: Joi.string().uri().required(),
   category: Joi.string().required(),
-  price: Joi.number().min(0).required(),
-  description: Joi.string().optional(),
+  stars: Joi.number().min(0).max(5).required(),
 });
 
 module.exports = {

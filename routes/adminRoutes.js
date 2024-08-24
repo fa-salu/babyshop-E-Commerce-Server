@@ -12,7 +12,8 @@ router.delete('/product/:productId', authMiddleware, adminControllers.deleteProd
 router.put('/product/:productId', authMiddleware, adminControllers.updateProduct)
 router.get('/purchase', authMiddleware, adminControllers.getTotalProductsPurchased)
 router.get('/revenue', authMiddleware, adminControllers.getTotalRevenue)
-router.get('/order',authMiddleware, adminControllers.getOrderDetails )
+router.get('/order',authMiddleware, adminControllers.getOrderDetails)
+router.get('/order/:userId', authMiddleware, adminControllers.getOrderDetailsByUser)
 
 
 module.exports = router
