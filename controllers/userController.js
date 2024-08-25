@@ -129,15 +129,12 @@ exports.addToCart = async (req, res) => {
       );
 
       if (existingProduct) {
-        // Increase the quantity if the product is already in the cart
         existingProduct.quantity += 1;
       } else {
-        // Add new product to the cart if it doesn't exist
         cart.products.push({ productId, quantity: 1 });
       }
       await cart.save();
     } else {
-      // Create a new cart if the user doesn't have one
       const newCart = new Cart({
         userId,
         products: [{ productId, quantity: 1 }]
