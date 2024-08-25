@@ -11,32 +11,32 @@ require("dotenv").config();
 const { joiRegisterSchema, joiLoginSchema } = require("../models/joiValidate");
 
 
-// User Registration
-exports.register = async (req, res) => {
-  try {
-    const { error } = joiRegisterSchema.validate(req.body);
-    if (error) {
-      return res
-        .status(400)
-        .json({ status: "failed", message: error.details[0].message });
+  // User Registration
+  exports.register = async (req, res) => {
+    try {
+      const { error } = joiRegisterSchema.validate(req.body);
+      if (error) {
+        return res
+          .status(400)
+          .json({ status: "failed", message: error.details[0].message });
+      }
+      const { username, email, password } = req.body;
+      console.log("register: " , username, email, password);
+
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({ message: "Email already registered" });
+      }
+
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const newUser = new User({ username, email, password: hashedPassword });
+      await newUser.save();
+
+      res.status(201).json({ message: "User registered successfully" });
+    } catch (error) {
+      res.status(500).json({ status: "failed", message: error.message });
     }
-    const { username, email, password } = req.body;
-    console.log("register: " , username, email, password);
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return res.status(400).json({ message: "Email already registered" });
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ username, email, password: hashedPassword });
-    await newUser.save();
-
-    res.status(201).json({ message: "User registered successfully" });
-  } catch (error) {
-    res.status(500).json({ status: "failed", message: error.message });
-  }
-};
+  };
 
 
 
@@ -57,6 +57,7 @@ exports.login = async (req, res) => {
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
       expiresIn: "1h",
     });
+ 
     res
       .status(200)
       .json({
@@ -101,7 +102,7 @@ exports.getProductsByCategory = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const { productId } = req.params;
-    // console.log(productId);
+    console.log(productId);
     
     const product = await Product.findById(productId);
     if (!product || product.isDeleted) {
@@ -148,6 +149,8 @@ exports.addToCart = async (req, res) => {
 exports.getCartItems = async (req, res) => {
   try {
     const { userId } = req.params;
+    console.log("getcartitem id : ", userId);
+    
     const cart = await Cart.findOne({ userId }).populate("products.productId");
     if (!cart) {
       return res.status(404).json({ message: "Cart not found" });
