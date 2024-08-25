@@ -1,0 +1,89 @@
+[33mcommit b77facf40471df4fd7c78ae5f756adb4c6ad7a93[m[33m ([m[1;36mHEAD -> [m[1;32madmin[m[33m, [m[1;31morigin/admin[m[33m)[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Sun Aug 25 11:19:11 2024 +0530
+
+    connect shop and cart
+
+[33mcommit 7a4ec966680d48c6910a68eba73ef2a005441c62[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Sat Aug 24 23:56:33 2024 +0530
+
+    add cors feature
+
+[33mcommit 2c285bc1e9ca3c0e22811fca79034383741d6be5[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Sat Aug 24 12:03:20 2024 +0530
+
+    user can register and login
+
+[33mcommit 2635e69bfac1354d70073bf09143c03e7f7c6f6b[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Fri Aug 23 12:21:55 2024 +0530
+
+    add createorder, verify payment and cancel payment completed
+
+[33mcommit c35b08e29695ced13f178b7c10dd3f7684477654[m[33m ([m[1;32mmain[m[33m)[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Fri Aug 23 00:14:42 2024 +0530
+
+    connect register and login with front-end
+
+[33mcommit 388dbdbb5b09cee7a646199d4cf7363f6ccf851f[m[33m ([m[1;31morigin/main[m[33m)[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Wed Aug 21 20:36:20 2024 +0530
+
+    add config file for connectDB
+
+[33mcommit 6fffca81ddc1108149c6cd1fe7a05cbfef05a538[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Wed Aug 21 20:19:36 2024 +0530
+
+    order with payment
+
+[33mcommit f03262a5e718c3c43381cff275c7fbeddffd0825[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Wed Aug 21 14:30:18 2024 +0530
+
+    .
+
+[33mcommit 654c22ab59fc3bda19c7c04ca1163dd9e3562513[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Wed Aug 21 14:27:59 2024 +0530
+
+    validate using joi
+
+[33mcommit c704060403670e8ac074f3fe9caba58741cf93d4[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Tue Aug 20 19:44:47 2024 +0530
+
+    add admin create product, delete product, update product
+
+[33mcommit 9aa3c1b8bdbbca44798d69ac234719b2d046ca92[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Mon Aug 19 20:19:20 2024 +0530
+
+    add admin route and controller
+
+[33mcommit 157c291d8b258bfe08f6055192914fbcd656a81c[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Sun Aug 18 20:53:37 2024 +0530
+
+    add admin login function
+
+[33mcommit 81b7abe565da8d81a6dd49780002130f04761150[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Fri Aug 16 20:06:17 2024 +0530
+
+    setup routes page
+
+[33mcommit 364b1b2cc7af9eb321e35a00676c88b15a543fe6[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Fri Aug 16 08:41:33 2024 +0530
+
+    user can delete cart item and clear cart item
+
+[33mcommit 814b4cde12c5ef4a4e92314de873d01f22e7ae9b[m
+Author: fasalu <fasalurahman7515@gmail.com>
+Date:   Thu Aug 15 22:57:22 2024 +0530
+
+    user can register, login, add product, wishlist completed

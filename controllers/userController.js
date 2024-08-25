@@ -120,24 +120,32 @@ exports.getProductById = async (req, res) => {
 exports.addToCart = async (req, res) => {
   try {
     const { userId, productId } = req.body;
+    // console.log('addtocart:', userId, productId);
     const cart = await Cart.findOne({ userId });
-    // console.log(cart);
 
     if (cart) {
       const existingProduct = cart.products.find((p) =>
         p.productId.equals(productId)
       );
+
       if (existingProduct) {
-        return res.status(400).json({ message: "Product already in cart" });
+        // Increase the quantity if the product is already in the cart
+        existingProduct.quantity += 1;
+      } else {
+        // Add new product to the cart if it doesn't exist
+        cart.products.push({ productId, quantity: 1 });
       }
-      cart.products.push({ productId });
       await cart.save();
     } else {
-      const newCart = new Cart({ userId, products: [{ productId }] });
+      // Create a new cart if the user doesn't have one
+      const newCart = new Cart({
+        userId,
+        products: [{ productId, quantity: 1 }]
+      });
       await newCart.save();
     }
-
     res.status(201).json({ message: "Product added to cart" });
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -149,7 +157,7 @@ exports.addToCart = async (req, res) => {
 exports.getCartItems = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log("getcartitem id : ", userId);
+    // console.log("getcartitem id : ", userId);
     
     const cart = await Cart.findOne({ userId }).populate("products.productId");
     if (!cart) {
