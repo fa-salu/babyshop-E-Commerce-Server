@@ -168,7 +168,7 @@ exports.getCartItems = async (req, res) => {
 
 
 
-// Delete a cart product for user
+// Delete or Decrease Quantity of a Cart Product
 exports.deleteCartItem = async (req, res) => {
   try {
     const { userId, productId } = req.params;
@@ -186,14 +186,24 @@ exports.deleteCartItem = async (req, res) => {
       return res.status(404).json({ message: "Product not found in cart" });
     }
 
-    cart.products.splice(productIndex, 1);
+    const product = cart.products[productIndex];
+
+    // Decrease the quantity if it's greater than 1
+    if (product.quantity > 1) {
+      product.quantity -= 1;
+    } else {
+      // Otherwise, remove the product from the cart
+      cart.products.splice(productIndex, 1);
+    }
+
     await cart.save();
 
-    res.status(200).json({ message: "Cart item deleted successfully" });
+    res.status(200).json({ message: "Cart item updated successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 
 
