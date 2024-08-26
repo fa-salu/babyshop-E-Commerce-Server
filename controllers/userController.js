@@ -102,7 +102,7 @@ exports.getProductsByCategory = async (req, res) => {
 exports.getProductById = async (req, res) => {
   try {
     const { productId } = req.params;
-    console.log(productId);
+    // console.log(productId);
     
     const product = await Product.findById(productId);
     if (!product || product.isDeleted) {
@@ -120,7 +120,7 @@ exports.getProductById = async (req, res) => {
 exports.addToCart = async (req, res) => {
   try {
     const { userId, productId } = req.body;
-    // console.log('addtocart:', userId, productId);
+    console.log('addtocart:', userId, productId);
     const cart = await Cart.findOne({ userId });
 
     if (cart) {
