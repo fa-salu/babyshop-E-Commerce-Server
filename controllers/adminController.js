@@ -66,6 +66,19 @@ exports.getAllProduct = async (req, res) => {
   }
 };
 
+
+// Get product by id
+exports.getProductsByCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+    const products = await Product.find({ category, isDeleted: false });
+    res.status(200).json(products);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 // Create product
 exports.createProduct = async (req, res) => {
   try {
