@@ -1,31 +1,31 @@
 const Users = require("../models/userModel");
 const Product = require("../models/productModel");
 const Order = require("../models/orderModel");
-const jwt = require("jsonwebtoken");
+// const jwt = require("jsonwebtoken");
 const { joiCreateProductSchema } = require("../models/joiValidate");
 // admin login
-exports.adminLogin = (req, res) => {
-  const { email, password } = req.body;
+// exports.adminLogin = (req, res) => {
+//   const { email, password } = req.body;
 
-  const ADMIN_KEY = process.env.ADMIN_KEY;
-  const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+//   const ADMIN_KEY = process.env.ADMIN_KEY;
+//   const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
-  if (email === ADMIN_KEY && password === ADMIN_PASSWORD) {
-    const token = jwt.sign({ isAdmin: true }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
+//   if (email === ADMIN_KEY && password === ADMIN_PASSWORD) {
+//     const token = jwt.sign({ isAdmin: true }, process.env.JWT_SECRET, {
+//       expiresIn: "1h",
+//     });
 
-    return res.status(200).json({
-      message: "Admin Login Successfull",
-      token: token,
-    });
-  } else {
-    return res.status(401).json({
-      message: "Invalid Credential",
-      error: "usesr name or password did't match",
-    });
-  }
-};
+//     return res.status(200).json({
+//       message: "Admin Login Successfull",
+//       token: token,
+//     });
+//   } else {
+//     return res.status(401).json({
+//       message: "Invalid Credential",
+//       error: "usesr name or password did't match",
+//     });
+//   }
+// };
 
 // Get all users
 exports.getAllUsers = async (req, res) => {

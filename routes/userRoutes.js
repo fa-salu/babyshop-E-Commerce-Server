@@ -10,9 +10,10 @@ router.get('/products', userController.getAllProducts);
 router.get('/products/:category', userController.getProductsByCategory);
 router.get('/product/:productId', userController.getProductById);
 router.post('/cart', authMiddleware, userController.addToCart);
-router.put('/cart/:userId/:productId', authMiddleware, userController.updateCartItemQuantity);
+// router.put('/cart/:userId/:productId', authMiddleware, userController.updateCartItemQuantity);
 router.get('/cart/:userId', authMiddleware, userController.getCartItems);
-router.delete('/cart/:userId/:productId', authMiddleware, userController.deleteCartItem);
+router.delete('/cart/remove/:userId/:productId', authMiddleware, userController.removeCartItem);
+router.delete('/cart/delete/:userId/:productId', authMiddleware, userController.deleteCartItem)
 router.delete('/cart/:userId', authMiddleware, userController.clearCart);
 router.post('/wishlist', authMiddleware, userController.addToWishlist);
 router.get('/wishlist/:userId', authMiddleware, userController.getWishlistItems);

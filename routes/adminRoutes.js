@@ -3,7 +3,7 @@ const router = express.Router()
 const adminControllers = require('../controllers/adminController')
 const authMiddleware = require('../middleware/authMiddleware')
 
-router.post('/login', adminControllers.adminLogin)
+// router.post('/login', adminControllers.adminLogin)
 router.get('/users', authMiddleware, adminControllers.getAllUsers)
 router.get('/user/:userId', authMiddleware, adminControllers.getUserById)
 router.get('/products', authMiddleware, adminControllers.getAllProduct)

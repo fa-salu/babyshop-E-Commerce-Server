@@ -10,66 +10,86 @@ const Razorpay = require("razorpay");
 require("dotenv").config();
 const { joiRegisterSchema, joiLoginSchema } = require("../models/joiValidate");
 
-
-  // User Registration
-  exports.register = async (req, res) => {
-    try {
-      const { error } = joiRegisterSchema.validate(req.body);
-      if (error) {
-        return res
-          .status(400)
-          .json({ status: "failed", message: error.details[0].message });
-      }
-      const { username, email, password } = req.body;
-      console.log("register: " , username, email, password);
-
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ message: "Email already registered" });
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const newUser = new User({ username, email, password: hashedPassword });
-      await newUser.save();
-
-      res.status(201).json({ message: "User registered successfully" });
-    } catch (error) {
-      res.status(500).json({ status: "failed", message: error.message });
+// User Registration
+exports.register = async (req, res) => {
+  try {
+    const { error } = joiRegisterSchema.validate(req.body);
+    if (error) {
+      return res
+        .status(400)
+        .json({ status: "failed", message: error.details[0].message });
     }
-  };
+    const { username, email, password } = req.body;
+    console.log("register: ", username, email, password);
 
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = new User({ username, email, password: hashedPassword });
+    await newUser.save();
 
-// User Login
+    res.status(201).json({ message: "User registered successfully" });
+  } catch (error) {
+    res.status(500).json({ status: "failed", message: error.message });
+  }
+};
+
+// User/Admin Login
 exports.login = async (req, res) => {
-  // console.log(req.body);
+  console.log(req.body);
 
   try {
     const { error } = joiLoginSchema.validate(req.body);
-    if (error)
+    if (error) {
       return res.status(400).json({ message: error.details[0].message });
+    }
 
     const { email, password } = req.body;
+
+    // Define admin credentials
+    const ADMIN_KEY = process.env.ADMIN_KEY;
+    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
+
+    // Check if the email and password match the admin credentials
+    if (email === ADMIN_KEY && password === ADMIN_PASSWORD) {
+      const token = jwt.sign({ isAdmin: true }, process.env.JWT_SECRET, {
+        expiresIn: "1h",
+      });
+      res.cookie('token', token, { httpOnly: true, maxAge: 3600000 }); // 1 hour
+      res.cookie('isAdmin', 'true', { httpOnly: true, maxAge: 3600000 }); // 1 hour
+
+
+      return res.status(200).json({
+        token,
+        user: { isAdmin: true, email: ADMIN_KEY }, 
+      });
+    }
+
+    // Regular user login
     const user = await User.findOne({ email });
     if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ message: "email or password not match" });
+      return res
+        .status(401)
+        .json({ message: "Email or password doesn't match" });
     }
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
+
+    const token = jwt.sign(
+      { userId: user._id, isAdmin: user.isAdmin },
+      process.env.JWT_SECRET,
+      { expiresIn: "1D" }
+    );
+
+    res.status(200).json({
+      token,
+      user: { id: user._id, email: user.email, username: user.username, isAdmin: user.isAdmin },
     });
- 
-    res
-      .status(200)
-      .json({
-        token,
-        user: { id: user._id, email: user.email, username: user.username },
-      });
   } catch (error) {
     res.status(500).json({ message: error.message, error: error });
   }
 };
-
-
 
 
 // get all products
@@ -82,9 +102,6 @@ exports.getAllProducts = async (req, res) => {
   }
 };
 
-
-
-
 // View Products by Category
 exports.getProductsByCategory = async (req, res) => {
   try {
@@ -96,14 +113,12 @@ exports.getProductsByCategory = async (req, res) => {
   }
 };
 
-
-
 // View a Specific Product
 exports.getProductById = async (req, res) => {
   try {
     const { productId } = req.params;
     // console.log(productId);
-    
+
     const product = await Product.findById(productId);
     if (!product || product.isDeleted) {
       return res.status(404).json({ message: "Product not found" });
@@ -114,13 +129,11 @@ exports.getProductById = async (req, res) => {
   }
 };
 
-
- 
 // Add Product to Cart
 exports.addToCart = async (req, res) => {
   try {
     const { userId, productId } = req.body;
-    console.log('addtocart:', userId, productId);
+    // console.log('addtocart:', userId, productId);
     const cart = await Cart.findOne({ userId });
 
     if (cart) {
@@ -137,25 +150,22 @@ exports.addToCart = async (req, res) => {
     } else {
       const newCart = new Cart({
         userId,
-        products: [{ productId, quantity: 1 }]
+        products: [{ productId, quantity: 1 }],
       });
       await newCart.save();
     }
     res.status(201).json({ message: "Product added to cart" });
-
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
-
 
 // Get Cart Items
 exports.getCartItems = async (req, res) => {
   try {
     const { userId } = req.params;
     // console.log("getcartitem id : ", userId);
-    
+
     const cart = await Cart.findOne({ userId }).populate("products.productId");
     if (!cart) {
       return res.status(404).json({ message: "Cart not found" });
@@ -166,12 +176,12 @@ exports.getCartItems = async (req, res) => {
   }
 };
 
-
-
-// Delete or Decrease Quantity of a Cart Product
-exports.deleteCartItem = async (req, res) => {
+// Decrease Quantity of a Cart Product
+exports.removeCartItem = async (req, res) => {
   try {
     const { userId, productId } = req.params;
+    console.log("removecart: ", userId, productId);
+
     const cart = await Cart.findOne({ userId });
 
     if (!cart) {
@@ -204,8 +214,38 @@ exports.deleteCartItem = async (req, res) => {
   }
 };
 
+// Delete a single product from the cart
+exports.deleteCartItem = async (req, res) => {
+  try {
+    const { userId, productId } = req.params;
+    console.log("deletecart: ", userId, productId);
 
+    // Find the cart by userId
+    const cart = await Cart.findOne({ userId });
 
+    if (!cart) {
+      return res.status(404).json({ message: "Cart not found" });
+    }
+
+    const productIndex = cart.products.findIndex(
+      (item) => item.productId.toString() === productId
+    );
+
+    if (productIndex === -1) {
+      return res.status(404).json({ message: "Product not found in cart" });
+    }
+
+    // Remove the product from the cart
+    cart.products.splice(productIndex, 1);
+
+    // Save the updated cart
+    await cart.save();
+
+    res.status(200).json({ message: "Product removed from cart successfully" });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
 
 // Clear cart for user
 exports.clearCart = async (req, res) => {
@@ -225,8 +265,6 @@ exports.clearCart = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-
 
 // Update Cart Item Quantity
 exports.updateCartItemQuantity = async (req, res) => {
@@ -259,8 +297,6 @@ exports.updateCartItemQuantity = async (req, res) => {
   }
 };
 
-
-
 // Add Product to Wishlist
 exports.addToWishlist = async (req, res) => {
   try {
@@ -288,8 +324,6 @@ exports.addToWishlist = async (req, res) => {
   }
 };
 
-
-
 // get wishlist items
 exports.getWishlistItems = async (req, res) => {
   try {
@@ -304,9 +338,153 @@ exports.getWishlistItems = async (req, res) => {
   }
 };
 
-
-
 // Order section
+// exports.createOrder = async (req, res) => {
+//   const razorpayInstance = new Razorpay({
+//     key_id: process.env.RAZORPAY_KEY_ID,
+//     key_secret: process.env.RAZORPAY_KEY_SECRET,
+//   });
+
+//   try {
+//     const { userId } = req.body;
+//     const cart = await Cart.findOne({ userId }).populate("products.productId");
+
+//     if (!cart || cart.products.length === 0) {
+//       return res.status(400).json({ message: "Cart is empty or not found" });
+//     }
+
+//     // Calculate total price and ensure it's an integer
+//     const totalPrice = Math.round(
+//       cart.products.reduce(
+//         (acc, item) => acc + item.productId.price * item.quantity,
+//         0
+//       )
+//     );
+
+//     const totalItems = cart.products.length;
+//     const totalQuantity = cart.products.reduce(
+//       (acc, item) => acc + item.quantity,
+//       0
+//     );
+
+//     // Create a Razorpay order
+//     const options = {
+//       amount: totalPrice * 100,
+//       currency: "INR",
+//       receipt: `receipt_order_${Date.now()}`,
+//       payment_capture: 1,
+//     };
+
+//     const razorpayOrder = await razorpayInstance.orders.create(options);
+//     console.log("Razorpay order:", razorpayOrder);
+
+//     if (!razorpayOrder) {
+//       return res.status(500).json({ message: "Error creating Razorpay order" });
+//     }
+
+//     const newOrder = new Order({
+//       userId,
+//       Products: cart.products,
+//       totalPrice,
+//       totalItems,
+//       totalQuantity,
+//       purchaseDate: Date.now(),
+//       orderId: razorpayOrder.id,
+//       paymentStatus: "Pending",
+//     });
+
+//     await newOrder.save();
+
+//     await Cart.findByIdAndDelete(cart._id);
+
+//     res.status(201).json({
+//       message: "Order created successfully",
+//       order: newOrder,
+//       razorpayOrderId: razorpayOrder.id,
+//       razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+//     });
+//   } catch (error) {
+//     console.error("Error in createOrder:", error);
+//     res
+//       .status(500)
+//       .json({ message: error.message, error: "Can't create order" });
+//   }
+// };
+
+// // order section
+// exports.verifyPayment = async (req, res) => {
+//   try {
+//     const { razorpayOrderId } = req.body;
+//     // console.log("body: " , razorpayOrderId);
+
+//     const order = await Order.findOne({orderId: razorpayOrderId});
+//     // console.log("verify: ", order);
+
+//     if (!order) {
+//       return res.status(404).json({ message: "Order not found" });
+//     }
+//     order.paymentStatus = "Completed";
+
+//     await order.save();
+//     return res.status(200).json({ message: "Payment verified", order });
+//   } catch (error) {
+//     console.error("Error in verifyPayment:", error);
+//     res
+//       .status(500)
+//       .json({ message: error.message, error: "Can't verify payment" });
+//   }
+// };
+
+// // cancel payment
+// exports.cancelPayment = async (req, res) => {
+//   try {
+//     const { orderId } = req.params;
+
+//     const order = await Order.findOne({ orderId: orderId });
+
+//     if (!order) {
+//       return res.status(404).json({ message: "Order not found" });
+//     }
+
+//     if (order.paymentStatus !== "Pending") {
+//       return res.status(400).json({ message: "Cannot cancel completed payment" });
+//     }
+
+//     await Order.findOneAndDelete({ orderId: orderId });
+
+//     const cart = new Cart({
+//       userId: order.userId,
+//       products: order.Products,
+//     });
+
+//     await cart.save();
+
+//     return res.status(200).json({ message: "Order cancelled successfully and items restored to cart" });
+//   } catch (error) {
+//     console.error("Error in cancelPayment:", error);
+//     res.status(500).json({ message: error.message, error: "Can't cancel order" });
+//   }
+// };
+
+// // View Order Details
+// exports.getOrderDetails = async (req, res) => {
+//     try {
+//       const { orderId } = req.params;
+
+//       const order = await Order.findOne({ orderId, paymentStatus: "Completed" });
+
+//       if (!order) {
+//         return res.status(404).json({ message: "Order not found or payment is not completed" });
+//       }
+
+//       return res.status(200).json({ message: "Order retrieved successfully", order });
+//     } catch (error) {
+//       console.error("Error in getOrderIfCompleted:", error);
+//       res.status(500).json({ message: error.message, error: "Can't retrieve order" });
+//     }
+//   };
+
+// create order
 exports.createOrder = async (req, res) => {
   const razorpayInstance = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
@@ -335,18 +513,15 @@ exports.createOrder = async (req, res) => {
       0
     );
 
-
-
     // Create a Razorpay order
     const options = {
-      amount: totalPrice * 100,
+      amount: totalPrice * 100, // Razorpay accepts amount in paise
       currency: "INR",
       receipt: `receipt_order_${Date.now()}`,
-      payment_capture: 1,
+      payment_capture: 1, // Automatic payment capture
     };
 
     const razorpayOrder = await razorpayInstance.orders.create(options);
-    console.log("Razorpay order:", razorpayOrder);
 
     if (!razorpayOrder) {
       return res.status(500).json({ message: "Error creating Razorpay order" });
@@ -364,7 +539,6 @@ exports.createOrder = async (req, res) => {
     });
 
     await newOrder.save();
-
     await Cart.findByIdAndDelete(cart._id);
 
     res.status(201).json({
@@ -381,23 +555,29 @@ exports.createOrder = async (req, res) => {
   }
 };
 
-// order section
+// controllers/razorpayController.js
 exports.verifyPayment = async (req, res) => {
-  try {
-    const { razorpayOrderId } = req.body;
-    // console.log("body: " , razorpayOrderId);
-    
-    const order = await Order.findOne({orderId: razorpayOrderId});
-    // console.log("verify: ", order);
-    
+  const { orderId, paymentId, signature } = req.body;
 
+  try {
+    const generatedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(`${orderId}|${paymentId}`)
+      .digest("hex");
+
+    if (generatedSignature !== signature) {
+      return res.status(400).json({ message: "Invalid signature" });
+    }
+
+    const order = await Order.findOne({ orderId });
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
-    order.paymentStatus = "Completed";
 
+    order.paymentStatus = "Completed";
     await order.save();
-    return res.status(200).json({ message: "Payment verified", order });
+
+    res.status(200).json({ message: "Payment verified", order });
   } catch (error) {
     console.error("Error in verifyPayment:", error);
     res
@@ -406,23 +586,24 @@ exports.verifyPayment = async (req, res) => {
   }
 };
 
-
-// cancel payment
+// controllers/razorpayController.js
 exports.cancelPayment = async (req, res) => {
-  try {
-    const { orderId } = req.params;
+  const { orderId } = req.params;
 
-    const order = await Order.findOne({ orderId: orderId });
+  try {
+    const order = await Order.findOne({ orderId });
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
     }
 
     if (order.paymentStatus !== "Pending") {
-      return res.status(400).json({ message: "Cannot cancel completed payment" });
+      return res
+        .status(400)
+        .json({ message: "Cannot cancel completed payment" });
     }
 
-    await Order.findOneAndDelete({ orderId: orderId });
+    await Order.findOneAndDelete({ orderId });
 
     const cart = new Cart({
       userId: order.userId,
@@ -431,31 +612,37 @@ exports.cancelPayment = async (req, res) => {
 
     await cart.save();
 
-    return res.status(200).json({ message: "Order cancelled successfully and items restored to cart" });
+    res
+      .status(200)
+      .json({
+        message: "Order cancelled successfully and items restored to cart",
+      });
   } catch (error) {
     console.error("Error in cancelPayment:", error);
-    res.status(500).json({ message: error.message, error: "Can't cancel order" });
+    res
+      .status(500)
+      .json({ message: error.message, error: "Can't cancel order" });
   }
 };
 
-
-
-// View Order Details
+// controllers/razorpayController.js
 exports.getOrderDetails = async (req, res) => {
-    try {
-      const { orderId } = req.params;
-  
-      const order = await Order.findOne({ orderId, paymentStatus: "Completed" });
-  
-      if (!order) {
-        return res.status(404).json({ message: "Order not found or payment is not completed" });
-      }
-  
-      return res.status(200).json({ message: "Order retrieved successfully", order });
-    } catch (error) {
-      console.error("Error in getOrderIfCompleted:", error);
-      res.status(500).json({ message: error.message, error: "Can't retrieve order" });
-    }
-  };
-  
+  const { orderId } = req.params;
 
+  try {
+    const order = await Order.findOne({ orderId, paymentStatus: "Completed" });
+
+    if (!order) {
+      return res
+        .status(404)
+        .json({ message: "Order not found or payment is not completed" });
+    }
+
+    res.status(200).json({ message: "Order retrieved successfully", order });
+  } catch (error) {
+    console.error("Error in getOrderDetails:", error);
+    res
+      .status(500)
+      .json({ message: error.message, error: "Can't retrieve order" });
+  }
+};
