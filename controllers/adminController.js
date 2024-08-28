@@ -60,6 +60,8 @@ exports.getUserById = async (req, res) => {
 exports.getAllProduct = async (req, res) => {
   try {
     const products = await Product.find();
+    console.log(products);
+    
     res.status(200).json(products);
   } catch (error) {
     res.status(500).json({ message: "product not found", error: error });
@@ -81,12 +83,15 @@ exports.getProductsByCategory = async (req, res) => {
 
 // Create product
 exports.createProduct = async (req, res) => {
+  // console.log('admin create product: ', req.body)
   try {
     const { error } = joiCreateProductSchema.validate(req.body);
     if (error)
       return res.status(400).json({ message: error.details[0].message });
 
     const { name, description, price, image, category, stars } = req.body;
+    console.log('name:', name, 'image:', image,);
+    
     const newProduct = new Product({
       name,
       description,
@@ -95,6 +100,8 @@ exports.createProduct = async (req, res) => {
       category,
       stars
     });
+    console.log('newProduct from create product: ',newProduct);
+    
     await newProduct.save();
     res
       .status(201)

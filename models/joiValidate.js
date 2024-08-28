@@ -14,15 +14,18 @@ const joiLoginSchema = Joi.object({
   password: Joi.string().required(),
 });
 
-// Product creation validation schema
+
+// Product validaation schema
 const joiCreateProductSchema = Joi.object({
   name: Joi.string().required(),
   description: Joi.string().required(),
   price: Joi.number().required(),
-  image: Joi.string().uri().required(),
+  image: Joi.string().required(), // Should be a valid base64 string
   category: Joi.string().required(),
-  stars: Joi.number().min(0).max(5).required(),
+  stars: Joi.number().required().min(0).max(5)
 });
+
+
 
 module.exports = {
   joiRegisterSchema,
