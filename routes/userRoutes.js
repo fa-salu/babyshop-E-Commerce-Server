@@ -19,7 +19,7 @@ router.post('/wishlist', authMiddleware, userController.addToWishlist);
 router.get('/wishlist/:userId', authMiddleware, userController.getWishlistItems);
 router.post('/order', authMiddleware, userController.createOrder);
 router.post('/order/verify', authMiddleware, userController.verifyPayment)
-router.post('/order/:orderId', authMiddleware, userController.cancelPayment)
 router.get('/order/:orderId', authMiddleware, userController.getOrderDetails);
+// router.post('/order/:orderId', authMiddleware, userController.cancelPayment)
 
 module.exports = router;

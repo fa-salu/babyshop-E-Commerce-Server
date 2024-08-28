@@ -164,7 +164,7 @@ exports.addToCart = async (req, res) => {
 exports.getCartItems = async (req, res) => {
   try {
     const { userId } = req.params;
-    // console.log("getcartitem id : ", userId);
+    console.log("getcartitem id : ", userId);
 
     const cart = await Cart.findOne({ userId }).populate("products.productId");
     if (!cart) {
@@ -484,7 +484,7 @@ exports.getWishlistItems = async (req, res) => {
 //     }
 //   };
 
-// create order
+
 exports.createOrder = async (req, res) => {
   const razorpayInstance = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
@@ -492,142 +492,93 @@ exports.createOrder = async (req, res) => {
   });
 
   try {
-    const { userId } = req.body;
-    const cart = await Cart.findOne({ userId }).populate("products.productId");
+    const { userId, name, place, phone, address } = req.body;
+    const cart = await Cart.findOne({ userId }).populate('products.productId');
 
     if (!cart || cart.products.length === 0) {
-      return res.status(400).json({ message: "Cart is empty or not found" });
+      return res.status(400).json({ message: 'Cart is empty or not found' });
     }
 
-    // Calculate total price and ensure it's an integer
     const totalPrice = Math.round(
-      cart.products.reduce(
-        (acc, item) => acc + item.productId.price * item.quantity,
-        0
-      )
+      cart.products.reduce((acc, item) => acc + item.productId.price * item.quantity, 0)
     );
 
-    const totalItems = cart.products.length;
-    const totalQuantity = cart.products.reduce(
-      (acc, item) => acc + item.quantity,
-      0
-    );
-
-    // Create a Razorpay order
     const options = {
-      amount: totalPrice * 100, // Razorpay accepts amount in paise
-      currency: "INR",
+      amount: totalPrice * 100, 
+      currency: 'INR',
       receipt: `receipt_order_${Date.now()}`,
-      payment_capture: 1, // Automatic payment capture
+      payment_capture: 1,
     };
 
     const razorpayOrder = await razorpayInstance.orders.create(options);
 
     if (!razorpayOrder) {
-      return res.status(500).json({ message: "Error creating Razorpay order" });
+      return res.status(500).json({ message: 'Error creating Razorpay order' });
     }
 
     const newOrder = new Order({
       userId,
-      Products: cart.products,
+      products: cart.products,
       totalPrice,
-      totalItems,
-      totalQuantity,
+      totalItems: cart.products.length,
+      totalQuantity: cart.products.reduce((acc, item) => acc + item.quantity, 0),
       purchaseDate: Date.now(),
       orderId: razorpayOrder.id,
-      paymentStatus: "Pending",
+      paymentStatus: 'Pending',
+      userDetails: { name, place, phone, address },
     });
 
     await newOrder.save();
     await Cart.findByIdAndDelete(cart._id);
 
     res.status(201).json({
-      message: "Order created successfully",
+      message: 'Order created successfully',
       order: newOrder,
       razorpayOrderId: razorpayOrder.id,
       razorpayKeyId: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
-    console.error("Error in createOrder:", error);
-    res
-      .status(500)
-      .json({ message: error.message, error: "Can't create order" });
+    console.error('Error in createOrder:', error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-// controllers/razorpayController.js
 exports.verifyPayment = async (req, res) => {
-  const { orderId, paymentId, signature } = req.body;
-
   try {
+    const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
+    console.log('orderId: ', razorpayOrderId);
+    console.log('paymentId: ', razorpayPaymentId);
+    console.log('sign: ', razorpaySignature);
+    
+    
+    
+
     const generatedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-      .update(`${orderId}|${paymentId}`)
-      .digest("hex");
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+      .digest('hex');
 
-    if (generatedSignature !== signature) {
-      return res.status(400).json({ message: "Invalid signature" });
+    if (generatedSignature !== razorpaySignature) {
+      return res.status(400).json({ message: 'Payment verification failed' });
     }
 
-    const order = await Order.findOne({ orderId });
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
+    const order = await Order.findOneAndUpdate(
+      { orderId: razorpayOrderId },
+      { paymentStatus: 'Completed' },
+      { new: true }
+    );
 
-    order.paymentStatus = "Completed";
-    await order.save();
-
-    res.status(200).json({ message: "Payment verified", order });
+    res.status(200).json({ message: 'Payment verified successfully', order });
   } catch (error) {
-    console.error("Error in verifyPayment:", error);
-    res
-      .status(500)
-      .json({ message: error.message, error: "Can't verify payment" });
+    console.error('Error in verifyPayment:', error);
+    res.status(500).json({ message: error.message });
   }
 };
 
-// controllers/razorpayController.js
-exports.cancelPayment = async (req, res) => {
-  const { orderId } = req.params;
-
-  try {
-    const order = await Order.findOne({ orderId });
-
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
-
-    if (order.paymentStatus !== "Pending") {
-      return res
-        .status(400)
-        .json({ message: "Cannot cancel completed payment" });
-    }
-
-    await Order.findOneAndDelete({ orderId });
-
-    const cart = new Cart({
-      userId: order.userId,
-      products: order.Products,
-    });
-
-    await cart.save();
-
-    res
-      .status(200)
-      .json({
-        message: "Order cancelled successfully and items restored to cart",
-      });
-  } catch (error) {
-    console.error("Error in cancelPayment:", error);
-    res
-      .status(500)
-      .json({ message: error.message, error: "Can't cancel order" });
-  }
-};
-
-// controllers/razorpayController.js
 exports.getOrderDetails = async (req, res) => {
   const { orderId } = req.params;
+  console.log('orderId from getOrderDetils: ', orderId);
+  
 
   try {
     const order = await Order.findOne({ orderId, paymentStatus: "Completed" });
