@@ -297,7 +297,7 @@ exports.updateCartItemQuantity = async (req, res) => {
   }
 };
 
-// Add Product to Wishlist
+// Add or Remove Product from Wishlist
 exports.addToWishlist = async (req, res) => {
   try {
     const { userId, productId } = req.body;
@@ -305,24 +305,55 @@ exports.addToWishlist = async (req, res) => {
     let wishlist = await Wishlist.findOne({ userId });
 
     if (wishlist) {
-      const productExists = wishlist.products.some((p) => p.equals(productId));
+      const productIndex = wishlist.products.findIndex((p) => p.equals(productId));
 
-      if (productExists) {
-        return res.status(400).json({ message: "Product already in wishlist" });
+      if (productIndex !== -1) {
+        wishlist.products.splice(productIndex, 1);
+        await wishlist.save();
+        return res.status(200).json({ message: "Product removed from wishlist", wishlist });
+      } else {
+        wishlist.products.push(productId);
+        await wishlist.save();
+        return res.status(201).json({ message: "Product added to wishlist", wishlist });
       }
-
-      wishlist.products.push(productId);
     } else {
       wishlist = new Wishlist({ userId, products: [productId] });
+      await wishlist.save();
+      return res.status(201).json({ message: "Product added to wishlist", wishlist });
     }
-
-    await wishlist.save();
-
-    res.status(201).json({ message: "Product added to wishlist", wishlist });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
+// Remove from wishlist
+exports.removeFromWishlist = async (req, res) => {
+  try {
+    const { userId, productId } = req.body; 
+
+    const wishlist = await Wishlist.findOne({ userId });
+
+    if (!wishlist) {
+      return res.status(404).json({ message: "Wishlist not found" });
+    }
+
+    const productIndex = wishlist.products.findIndex((p) => p.equals(productId));
+    if (productIndex === -1) {
+      return res.status(400).json({ message: "Product not found in wishlist" });
+    }
+
+    wishlist.products.splice(productIndex, 1);
+
+    await wishlist.save();
+
+    res.status(200).json({ message: "Product removed from wishlist", wishlist });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 // get wishlist items
 exports.getWishlistItems = async (req, res) => {
@@ -337,152 +368,6 @@ exports.getWishlistItems = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
-// Order section
-// exports.createOrder = async (req, res) => {
-//   const razorpayInstance = new Razorpay({
-//     key_id: process.env.RAZORPAY_KEY_ID,
-//     key_secret: process.env.RAZORPAY_KEY_SECRET,
-//   });
-
-//   try {
-//     const { userId } = req.body;
-//     const cart = await Cart.findOne({ userId }).populate("products.productId");
-
-//     if (!cart || cart.products.length === 0) {
-//       return res.status(400).json({ message: "Cart is empty or not found" });
-//     }
-
-//     // Calculate total price and ensure it's an integer
-//     const totalPrice = Math.round(
-//       cart.products.reduce(
-//         (acc, item) => acc + item.productId.price * item.quantity,
-//         0
-//       )
-//     );
-
-//     const totalItems = cart.products.length;
-//     const totalQuantity = cart.products.reduce(
-//       (acc, item) => acc + item.quantity,
-//       0
-//     );
-
-//     // Create a Razorpay order
-//     const options = {
-//       amount: totalPrice * 100,
-//       currency: "INR",
-//       receipt: `receipt_order_${Date.now()}`,
-//       payment_capture: 1,
-//     };
-
-//     const razorpayOrder = await razorpayInstance.orders.create(options);
-//     console.log("Razorpay order:", razorpayOrder);
-
-//     if (!razorpayOrder) {
-//       return res.status(500).json({ message: "Error creating Razorpay order" });
-//     }
-
-//     const newOrder = new Order({
-//       userId,
-//       Products: cart.products,
-//       totalPrice,
-//       totalItems,
-//       totalQuantity,
-//       purchaseDate: Date.now(),
-//       orderId: razorpayOrder.id,
-//       paymentStatus: "Pending",
-//     });
-
-//     await newOrder.save();
-
-//     await Cart.findByIdAndDelete(cart._id);
-
-//     res.status(201).json({
-//       message: "Order created successfully",
-//       order: newOrder,
-//       razorpayOrderId: razorpayOrder.id,
-//       razorpayKeyId: process.env.RAZORPAY_KEY_ID,
-//     });
-//   } catch (error) {
-//     console.error("Error in createOrder:", error);
-//     res
-//       .status(500)
-//       .json({ message: error.message, error: "Can't create order" });
-//   }
-// };
-
-// // order section
-// exports.verifyPayment = async (req, res) => {
-//   try {
-//     const { razorpayOrderId } = req.body;
-//     // console.log("body: " , razorpayOrderId);
-
-//     const order = await Order.findOne({orderId: razorpayOrderId});
-//     // console.log("verify: ", order);
-
-//     if (!order) {
-//       return res.status(404).json({ message: "Order not found" });
-//     }
-//     order.paymentStatus = "Completed";
-
-//     await order.save();
-//     return res.status(200).json({ message: "Payment verified", order });
-//   } catch (error) {
-//     console.error("Error in verifyPayment:", error);
-//     res
-//       .status(500)
-//       .json({ message: error.message, error: "Can't verify payment" });
-//   }
-// };
-
-// // cancel payment
-// exports.cancelPayment = async (req, res) => {
-//   try {
-//     const { orderId } = req.params;
-
-//     const order = await Order.findOne({ orderId: orderId });
-
-//     if (!order) {
-//       return res.status(404).json({ message: "Order not found" });
-//     }
-
-//     if (order.paymentStatus !== "Pending") {
-//       return res.status(400).json({ message: "Cannot cancel completed payment" });
-//     }
-
-//     await Order.findOneAndDelete({ orderId: orderId });
-
-//     const cart = new Cart({
-//       userId: order.userId,
-//       products: order.Products,
-//     });
-
-//     await cart.save();
-
-//     return res.status(200).json({ message: "Order cancelled successfully and items restored to cart" });
-//   } catch (error) {
-//     console.error("Error in cancelPayment:", error);
-//     res.status(500).json({ message: error.message, error: "Can't cancel order" });
-//   }
-// };
-
-// // View Order Details
-// exports.getOrderDetails = async (req, res) => {
-//     try {
-//       const { orderId } = req.params;
-
-//       const order = await Order.findOne({ orderId, paymentStatus: "Completed" });
-
-//       if (!order) {
-//         return res.status(404).json({ message: "Order not found or payment is not completed" });
-//       }
-
-//       return res.status(200).json({ message: "Order retrieved successfully", order });
-//     } catch (error) {
-//       console.error("Error in getOrderIfCompleted:", error);
-//       res.status(500).json({ message: error.message, error: "Can't retrieve order" });
-//     }
-//   };
 
 
 exports.createOrder = async (req, res) => {
@@ -575,25 +460,27 @@ exports.verifyPayment = async (req, res) => {
   }
 };
 
+
+
+
 exports.getOrderDetails = async (req, res) => {
-  const { orderId } = req.params;
-  console.log('orderId from getOrderDetils: ', orderId);
-  
+  const { userId } = req.params; // Make sure this matches the expected parameter
+  console.log('UserId from getOrderDetails:', userId);
 
   try {
-    const order = await Order.findOne({ orderId, paymentStatus: "Completed" });
+    const orders = await Order.find({ userId, paymentStatus: "Completed" });
 
-    if (!order) {
+    if (!orders.length) {
       return res
         .status(404)
-        .json({ message: "Order not found or payment is not completed" });
+        .json({ message: "No orders found for this user or payment is not completed" });
     }
 
-    res.status(200).json({ message: "Order retrieved successfully", order });
+    res.status(200).json({ message: "Orders retrieved successfully", orders });
   } catch (error) {
     console.error("Error in getOrderDetails:", error);
     res
       .status(500)
-      .json({ message: error.message, error: "Can't retrieve order" });
+      .json({ message: error.message, error: "Can't retrieve orders" });
   }
 };

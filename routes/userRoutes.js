@@ -16,10 +16,11 @@ router.delete('/cart/remove/:userId/:productId', authMiddleware, userController.
 router.delete('/cart/delete/:userId/:productId', authMiddleware, userController.deleteCartItem)
 router.delete('/cart/:userId', authMiddleware, userController.clearCart);
 router.post('/wishlist', authMiddleware, userController.addToWishlist);
+router.delete('/wishlist/remove/:userId/:productId', authMiddleware, userController.removeFromWishlist)
 router.get('/wishlist/:userId', authMiddleware, userController.getWishlistItems);
 router.post('/order', authMiddleware, userController.createOrder);
 router.post('/order/verify', authMiddleware, userController.verifyPayment)
-router.get('/order/:orderId', authMiddleware, userController.getOrderDetails);
+router.get('/order/:userId', authMiddleware, userController.getOrderDetails);
 // router.post('/order/:orderId', authMiddleware, userController.cancelPayment)
 
 module.exports = router;
