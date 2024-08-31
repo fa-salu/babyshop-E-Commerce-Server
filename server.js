@@ -11,10 +11,6 @@ connectDB()
 
 app.use(express.json());
 
-// const corsOptions = {
-//     origin: 'http://localhost:3001', // Allow only this origin (HTTP, not HTTPS)
-//     credentials: true, // Allow credentials (cookies, authorization headers, etc.)
-// };
 app.use(cors());
 app.use(errorHandler);
 

@@ -370,6 +370,8 @@ exports.getWishlistItems = async (req, res) => {
 };
 
 
+
+// create order
 exports.createOrder = async (req, res) => {
   const razorpayInstance = new Razorpay({
     key_id: process.env.RAZORPAY_KEY_ID,
@@ -473,7 +475,7 @@ exports.getOrderDetails = async (req, res) => {
     if (!orders.length) {
       return res
         .status(404)
-        .json({ message: "No orders found for this user or payment is not completed" });
+        .json({ message: "No orders found for this user" });
     }
 
     res.status(200).json({ message: "Orders retrieved successfully", orders });
@@ -484,3 +486,4 @@ exports.getOrderDetails = async (req, res) => {
       .json({ message: error.message, error: "Can't retrieve orders" });
   }
 };
+
