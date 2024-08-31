@@ -470,7 +470,9 @@ exports.getOrderDetails = async (req, res) => {
   console.log('UserId from getOrderDetails:', userId);
 
   try {
-    const orders = await Order.find({ userId, paymentStatus: "Completed" });
+    const orders = await Order.find({ userId, paymentStatus: "Completed" }).populate("products.productId");
+    console.log('order get', orders);
+    
 
     if (!orders.length) {
       return res
