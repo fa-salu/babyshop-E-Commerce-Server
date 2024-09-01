@@ -205,14 +205,24 @@ exports.getOrderDetails = async (req, res) => {
 // Get order details by user
 exports.getOrderDetailsByUser = async (req, res) => {
   try {
-    const { userId } = req.params
-    const order = await Order.find({ userId });
-    
-    if (!order) {
-      res.status(404).json({ message: "order details not found" });
+    const { userId } = req.params;
+
+    const orders = await Order.find({ userId, paymentStatus: "Completed" })
+      .populate({
+        path: 'products.productId',
+        select: 'name description price image category stars' 
+      });
+
+    console.log('orders', orders);
+
+    if (!orders || orders.length === 0) {
+      return res.status(404).json({ message: "Order details not found" });
     }
-    res.status(200).json(order);
+
+    res.status(200).json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message, error: error });
   }
 };
+
+
