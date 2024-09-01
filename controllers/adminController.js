@@ -31,7 +31,6 @@ const { joiCreateProductSchema } = require("../models/joiValidate");
 exports.getAllUsers = async (req, res) => {
   try {
     const users = await Users.find({}, { password: 0 });
-    // console.log(users)
     res.status(200).json(users);
   } catch (error) {
     res.status(500).json({ message: error, error: "users not found" });
@@ -60,7 +59,6 @@ exports.getUserById = async (req, res) => {
 exports.getAllProduct = async (req, res) => {
   try {
     const products = await Product.find();
-    console.log(products);
     
     res.status(200).json(products);
   } catch (error) {
@@ -83,14 +81,12 @@ exports.getProductsByCategory = async (req, res) => {
 
 // Create product
 exports.createProduct = async (req, res) => {
-  // console.log('admin create product: ', req.body)
   try {
     const { error } = joiCreateProductSchema.validate(req.body);
     if (error)
       return res.status(400).json({ message: error.details[0].message });
 
     const { name, description, price, image, category, stars } = req.body;
-    console.log('name:', name, 'image:', image,);
     
     const newProduct = new Product({
       name,
@@ -100,7 +96,6 @@ exports.createProduct = async (req, res) => {
       category,
       stars
     });
-    console.log('newProduct from create product: ',newProduct);
     
     await newProduct.save();
     res
@@ -155,7 +150,6 @@ exports.getTotalProductsPurchased = async (req, res) => {
     const totalProductsPurchased = await Order.aggregate([
       { $group: { _id: null, totalQuantity: { $sum: "$totalQuantity" } } },
     ]);
-    // console.log(totalProductsPurchased);
 
     res
       .status(200)
@@ -168,22 +162,35 @@ exports.getTotalProductsPurchased = async (req, res) => {
 // Get total revenue
 exports.getTotalRevenue = async (req, res) => {
   try {
+    // Aggregate total revenue
     const totalRevenue = await Order.aggregate([
       { $group: { _id: null, totalRevenue: { $sum: "$totalPrice" } } },
     ]);
-    // console.log(totalRevenue);
+    console.log('Total Revenue:', totalRevenue);
 
-    res.status(200).json({ totalRevenue: totalRevenue[0]?.totalRevenue || 0 });
+    // Aggregate revenue by month
+    const monthlyRevenue = await Order.aggregate([
+      { $group: { _id: { $month: "$purchaseDate" }, revenue: { $sum: "$totalPrice" } } },
+      { $sort: { "_id": 1 } },
+      { $project: { month: { $dateToString: { format: "%B", date: { $dateFromParts: { year: { $year: new Date() }, month: "$_id" } } } }, revenue: 1, _id: 0 } }
+    ]);
+    console.log('Monthly Revenue:', monthlyRevenue);
+
+    res.status(200).json({
+      totalRevenue: totalRevenue[0]?.totalRevenue || 0,
+      monthly: monthlyRevenue
+    });
   } catch (error) {
     res.status(500).json({ message: error.message, error: error });
   }
 };
 
+
+
 // Get order details
 exports.getOrderDetails = async (req, res) => {
   try {
     const order = await Order.find();
-    // console.log(order);
     
     if (!order) {
       res.status(404).json({ message: "order details not found" });
@@ -200,7 +207,6 @@ exports.getOrderDetailsByUser = async (req, res) => {
   try {
     const { userId } = req.params
     const order = await Order.find({ userId });
-    // console.log(order);
     
     if (!order) {
       res.status(404).json({ message: "order details not found" });
