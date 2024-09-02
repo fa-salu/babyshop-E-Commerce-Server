@@ -56,15 +56,20 @@ exports.login = async (req, res) => {
     // Check if the email and password match the admin credentials
     if (email === ADMIN_KEY && password === ADMIN_PASSWORD) {
       const token = jwt.sign({ isAdmin: true }, process.env.JWT_SECRET, {
-        expiresIn: "1h",
+        expiresIn: "1D",
       });
-      res.cookie('token', token, { httpOnly: true, maxAge: 3600000 }); // 1 hour
-      res.cookie('isAdmin', 'true', { httpOnly: true, maxAge: 3600000 }); // 1 hour
-
+      res.cookie("token", token, {
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000,
+      }); // 1 day
+      res.cookie("isAdmin", "true", {
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000,
+      }); // 1 day
 
       return res.status(200).json({
         token,
-        user: { isAdmin: true, email: ADMIN_KEY }, 
+        user: { isAdmin: true, email: ADMIN_KEY },
       });
     }
 
@@ -84,13 +89,17 @@ exports.login = async (req, res) => {
 
     res.status(200).json({
       token,
-      user: { id: user._id, email: user.email, username: user.username, isAdmin: user.isAdmin },
+      user: {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        isAdmin: user.isAdmin,
+      },
     });
   } catch (error) {
     res.status(500).json({ message: error.message, error: error });
   }
 };
-
 
 // get all products
 exports.getAllProducts = async (req, res) => {
@@ -106,6 +115,8 @@ exports.getAllProducts = async (req, res) => {
 exports.getProductsByCategory = async (req, res) => {
   try {
     const { category } = req.params;
+    console.log("category:", category);
+
     const products = await Product.find({ category, isDeleted: false });
     res.status(200).json(products);
   } catch (error) {
@@ -164,7 +175,7 @@ exports.addToCart = async (req, res) => {
 exports.getCartItems = async (req, res) => {
   try {
     const { userId } = req.params;
-    console.log("getcartitem id : ", userId);
+    // console.log("getcartitem id : ", userId);
 
     const cart = await Cart.findOne({ userId }).populate("products.productId");
     if (!cart) {
@@ -305,33 +316,39 @@ exports.addToWishlist = async (req, res) => {
     let wishlist = await Wishlist.findOne({ userId });
 
     if (wishlist) {
-      const productIndex = wishlist.products.findIndex((p) => p.equals(productId));
+      const productIndex = wishlist.products.findIndex((p) =>
+        p.equals(productId)
+      );
 
       if (productIndex !== -1) {
         wishlist.products.splice(productIndex, 1);
         await wishlist.save();
-        return res.status(200).json({ message: "Product removed from wishlist", wishlist });
+        return res
+          .status(200)
+          .json({ message: "Product removed from wishlist", wishlist });
       } else {
         wishlist.products.push(productId);
         await wishlist.save();
-        return res.status(201).json({ message: "Product added to wishlist", wishlist });
+        return res
+          .status(201)
+          .json({ message: "Product added to wishlist", wishlist });
       }
     } else {
       wishlist = new Wishlist({ userId, products: [productId] });
       await wishlist.save();
-      return res.status(201).json({ message: "Product added to wishlist", wishlist });
+      return res
+        .status(201)
+        .json({ message: "Product added to wishlist", wishlist });
     }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-
-
 // Remove from wishlist
 exports.removeFromWishlist = async (req, res) => {
   try {
-    const { userId, productId } = req.body; 
+    const { userId, productId } = req.body;
 
     const wishlist = await Wishlist.findOne({ userId });
 
@@ -339,7 +356,9 @@ exports.removeFromWishlist = async (req, res) => {
       return res.status(404).json({ message: "Wishlist not found" });
     }
 
-    const productIndex = wishlist.products.findIndex((p) => p.equals(productId));
+    const productIndex = wishlist.products.findIndex((p) =>
+      p.equals(productId)
+    );
     if (productIndex === -1) {
       return res.status(400).json({ message: "Product not found in wishlist" });
     }
@@ -348,12 +367,13 @@ exports.removeFromWishlist = async (req, res) => {
 
     await wishlist.save();
 
-    res.status(200).json({ message: "Product removed from wishlist", wishlist });
+    res
+      .status(200)
+      .json({ message: "Product removed from wishlist", wishlist });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 // get wishlist items
 exports.getWishlistItems = async (req, res) => {
@@ -369,8 +389,6 @@ exports.getWishlistItems = async (req, res) => {
   }
 };
 
-
-
 // create order
 exports.createOrder = async (req, res) => {
   const razorpayInstance = new Razorpay({
@@ -380,19 +398,22 @@ exports.createOrder = async (req, res) => {
 
   try {
     const { userId, name, place, phone, address } = req.body;
-    const cart = await Cart.findOne({ userId }).populate('products.productId');
+    const cart = await Cart.findOne({ userId }).populate("products.productId");
 
     if (!cart || cart.products.length === 0) {
-      return res.status(400).json({ message: 'Cart is empty or not found' });
+      return res.status(400).json({ message: "Cart is empty or not found" });
     }
 
     const totalPrice = Math.round(
-      cart.products.reduce((acc, item) => acc + item.productId.price * item.quantity, 0)
+      cart.products.reduce(
+        (acc, item) => acc + item.productId.price * item.quantity,
+        0
+      )
     );
 
     const options = {
-      amount: totalPrice * 100, 
-      currency: 'INR',
+      amount: totalPrice * 100,
+      currency: "INR",
       receipt: `receipt_order_${Date.now()}`,
       payment_capture: 1,
     };
@@ -400,7 +421,7 @@ exports.createOrder = async (req, res) => {
     const razorpayOrder = await razorpayInstance.orders.create(options);
 
     if (!razorpayOrder) {
-      return res.status(500).json({ message: 'Error creating Razorpay order' });
+      return res.status(500).json({ message: "Error creating Razorpay order" });
     }
 
     const newOrder = new Order({
@@ -408,10 +429,13 @@ exports.createOrder = async (req, res) => {
       products: cart.products,
       totalPrice,
       totalItems: cart.products.length,
-      totalQuantity: cart.products.reduce((acc, item) => acc + item.quantity, 0),
+      totalQuantity: cart.products.reduce(
+        (acc, item) => acc + item.quantity,
+        0
+      ),
       purchaseDate: Date.now(),
       orderId: razorpayOrder.id,
-      paymentStatus: 'Pending',
+      paymentStatus: "Pending",
       userDetails: { name, place, phone, address },
     });
 
@@ -419,13 +443,13 @@ exports.createOrder = async (req, res) => {
     await Cart.findByIdAndDelete(cart._id);
 
     res.status(201).json({
-      message: 'Order created successfully',
+      message: "Order created successfully",
       order: newOrder,
       razorpayOrderId: razorpayOrder.id,
       razorpayKeyId: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
-    console.error('Error in createOrder:', error);
+    console.error("Error in createOrder:", error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -433,51 +457,45 @@ exports.createOrder = async (req, res) => {
 exports.verifyPayment = async (req, res) => {
   try {
     const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = req.body;
-    console.log('orderId: ', razorpayOrderId);
-    console.log('paymentId: ', razorpayPaymentId);
-    console.log('sign: ', razorpaySignature);
-    
-    
-    
+    console.log("orderId: ", razorpayOrderId);
+    console.log("paymentId: ", razorpayPaymentId);
+    console.log("sign: ", razorpaySignature);
 
     const generatedSignature = crypto
-      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
       .update(`${razorpayOrderId}|${razorpayPaymentId}`)
-      .digest('hex');
+      .digest("hex");
 
     if (generatedSignature !== razorpaySignature) {
-      return res.status(400).json({ message: 'Payment verification failed' });
+      return res.status(400).json({ message: "Payment verification failed" });
     }
 
     const order = await Order.findOneAndUpdate(
       { orderId: razorpayOrderId },
-      { paymentStatus: 'Completed' },
+      { paymentStatus: "Completed" },
       { new: true }
     );
 
-    res.status(200).json({ message: 'Payment verified successfully', order });
+    res.status(200).json({ message: "Payment verified successfully", order });
   } catch (error) {
-    console.error('Error in verifyPayment:', error);
+    console.error("Error in verifyPayment:", error);
     res.status(500).json({ message: error.message });
   }
 };
 
-
-
-
 exports.getOrderDetails = async (req, res) => {
   const { userId } = req.params; // Make sure this matches the expected parameter
-  console.log('UserId from getOrderDetails:', userId);
+  console.log("UserId from getOrderDetails:", userId);
 
   try {
-    const orders = await Order.find({ userId, paymentStatus: "Completed" }).populate("products.productId");
-    console.log('order get', orders);
-    
+    const orders = await Order.find({
+      userId,
+      paymentStatus: "Completed",
+    }).populate("products.productId");
+    console.log("order get", orders);
 
     if (!orders.length) {
-      return res
-        .status(404)
-        .json({ message: "No orders found for this user" });
+      return res.status(404).json({ message: "No orders found for this user" });
     }
 
     res.status(200).json({ message: "Orders retrieved successfully", orders });
@@ -488,4 +506,3 @@ exports.getOrderDetails = async (req, res) => {
       .json({ message: error.message, error: "Can't retrieve orders" });
   }
 };
-
