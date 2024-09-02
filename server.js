@@ -13,7 +13,7 @@ app.use(express.json());
 
 app.use(cors(
     {
-        origin: "https://baby-shop-e-commerse-client.vercel.app/",
+        origin: "https://baby-shop-e-commerse-client.vercel.app",
         credentials : true
     }
 ));
