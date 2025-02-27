@@ -4,8 +4,7 @@ const cors = require('cors')
 const userRoutes = require("./routes/userRoutes");
 const adminRoutes = require("./routes/adminRoutes")
 const errorHandler = require("./middleware/errorHandler");
-const keepAlive = require("./utils/keepAlive");
-
+const healthRoutes = require("./routes/healthRoutes");
 require("dotenv").config();
 
 const app = express();
@@ -21,10 +20,10 @@ app.use(cors(
 ));
 app.use(errorHandler);
 
-keepAlive();
 
 app.use("/users", userRoutes);
 app.use("/admin", adminRoutes)
+app.use("/api", healthRoutes);
 
 const PORT = process.env.PORT || 5000;
 
