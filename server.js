@@ -14,7 +14,7 @@ app.use(express.json());
 
 app.use(cors(
     {
-        origin: "https://baby-shop-e-commerse-client.vercel.app",
+        origin: "process.env.CLIENT_URL",
         credentials : true
     }
 ));
