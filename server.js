@@ -12,12 +12,10 @@ connectDB()
 
 app.use(express.json());
 
-app.use(cors(
-    {
-        origin: "process.env.CLIENT_URL",
-        credentials : true
-    }
-));
+app.use(cors({
+    origin: ["https://littlelove.vercel.app", "https://baby-shop-e-commerse-client.vercel.app"],
+    credentials: true
+}));
 app.use(errorHandler);
 
 
